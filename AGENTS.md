@@ -1,120 +1,76 @@
 # AGENTS.md — BODREN Coffee Shop
-## AI Coding Rules & Architectural Contracts
-
-> This file is the authoritative source of coding rules for any AI agent or human developer
-> working on the **BODREN** codebase. Every rule below is non-negotiable and must be
-> respected on every edit, refactor, or feature addition.
+## Architectural Rules, Stack Specification & AI Guidelines
 
 ---
 
-## Rule 1 — Separation of Concerns: Only `ui.js` Touches the DOM
+## 1. The Stack
 
-**Principle:** Every interaction with the browser DOM — `document.querySelector`, `innerHTML`,
-`textContent`, `classList`, `addEventListener` on DOM nodes — is **exclusively allowed in
-`src/ui.js`**. No other module may reference the `document` object or any browser DOM API.
+- **Runtime / Language**: Vanilla TypeScript 5+ (`strict: true`, `noImplicitAny: true`, `strictNullChecks: true`, `noUncheckedIndexedAccess: true`).
+- **Build Tool**: Vite 5 (Native ES modules, lightning-fast HMR).
+- **Styling**: Vanilla CSS3 using Design Tokens (CSS Custom Properties). Zero heavy utility frameworks.
+- **Code Quality**: ESLint 9 (Flat Config), Prettier, Husky, lint-staged.
+- **Storage**: Browser `localStorage` with dual-key synchronization (`shopboard_cart_v1` primary, `bodren_cart_v1` fallback).
+- **Internationalization**: Lightweight custom i18n module supporting English (`en`), Arabic (`ar`), and Turkish (`tr`) with native RTL direction switching (`dir="rtl"`).
 
-**Why it matters:**
-Mixing DOM access into data, cart, or filter modules creates hidden coupling that makes
-testing impossible, causes race conditions during re-renders, and breaks the single-source-of-
-truth principle for UI state.
+---
 
-**Violations to avoid:**
-- ❌ Calling `document.getElementById(...)` inside `products.js`, `cart.js`, or `filters.js`.
-- ❌ Setting `element.innerHTML` inside `main.js` (use a `ui.js` export instead).
-- ❌ Attaching `addEventListener` to raw DOM nodes inside `cart.js`.
+## 2. Folder Structure & Adding New Features
 
-**Correct pattern:**
-```js
-// ✅ ui.js exports a render function
-export function renderCartItems(items) {
-  cartItemsList.innerHTML = items.map(item => `...`).join('');
-}
-
-// ✅ main.js calls the render function — zero DOM in main.js
-import { renderCartItems } from './ui.js';
-renderCartItems(getCart());
+```
+src/
+├── types.ts          ← All domain types, interfaces, and unions live here.
+├── products.ts       ← Pure product catalog data and category helpers.
+├── cart.ts           ← Pure cart state management and localStorage sync.
+├── filters.ts        ← Pure functions for search, category filter, and sorting.
+├── translations.ts   ← Dictionary tables for all supported languages.
+├── i18n.ts           ← Language state, persistence, and translation helper.
+├── ui.ts             ← SOLE DOM file. Handles all rendering and delegated events.
+├── quiz.ts           ← Self-contained interactive coffee recommender widget.
+├── main.ts           ← Application root orchestration and bootstrap.
+└── style.css         ← Global design tokens, responsive styles, and RTL rules.
 ```
 
----
-
-## Rule 2 — Array Immutability: Never Mutate the Original `products` Array
-
-**Principle:** The exported `products` array from `src/products.js` is the **single source of
-truth** for product data. It must **never** be mutated, sorted in place, or spliced. Every
-filter, sort, and search operation must produce a **new array** via spread (`[...products]`),
-`.filter()`, or `.map()`.
-
-**Why it matters:**
-JavaScript's `Array.prototype.sort()` mutates the array in place. If the original array is
-sorted, the "Default" order is permanently lost for the rest of the session, making it
-impossible to restore without a page refresh. This creates a subtle, hard-to-debug state bug.
-
-**Violations to avoid:**
-- ❌ `products.sort((a, b) => a.price - b.price)` — mutates the original.
-- ❌ `products.splice(index, 1)` — destructive.
-- ❌ Sorting the array passed into `applyFilters` without spreading first.
-
-**Correct pattern:**
-```js
-// ✅ Always spread before sort — original is untouched
-export function sortProducts(products, sortKey) {
-  const copy = [...products];           // new array
-  if (sortKey === 'price-asc') return copy.sort((a, b) => a.price - b.price);
-  if (sortKey === 'price-desc') return copy.sort((a, b) => b.price - a.price);
-  return copy.sort((a, b) => a.id - b.id); // "default" = original id order
-}
-```
+### Where does a new feature go?
+- **Adding new data fields**: Update `Product` interface in `types.ts`, then add data in `products.ts` and translations in `translations.ts`.
+- **Adding a new filter or sorting mode**: Add the pure logic function in `filters.ts`. Never touch the DOM from `filters.ts`.
+- **Adding UI components or changing layout**: All HTML generation and element querying must happen inside `ui.ts`.
+- **Wiring user interaction**: Register events in `main.ts` using delegated listeners defined in `ui.ts`.
+- **Styling updates**: Add variables to the `:root` tokens block in `style.css` before authoring component rules.
 
 ---
 
-## Rule 3 — Event Listener Isolation: One Listener Per Container (Delegation Pattern)
+## 3. Strict AI Rules (From Mistakes Seen During Development)
 
-**Principle:** Event listeners must **never** be attached inside render loops or called
-multiple times on the same element. Use a **single delegated listener** on a stable parent
-container. Route actions via `e.target.closest('[selector]')`.
+### Rule 1: Separation of Concerns (Only `ui.ts` Touches the DOM)
+*In our own words:*  
+AI agents frequently attempt to query or update DOM elements inside business logic files (like creating a notification element directly inside `cart.ts` or reading an input inside `filters.ts`). This couples state logic to the browser environment, breaks automated testing, and causes state desynchronization.
+- **Strict Invariant**: No file other than `src/ui.ts` may reference `document`, `window`, or DOM APIs. Logic files must remain 100% pure.
 
-**Why it matters:**
-If `renderProducts()` is called on every filter keystroke and each call does
-`button.addEventListener('click', handler)`, buttons accumulate 5, 10, or 100+ listeners.
-One click will then fire `addToCart` 100 times, corrupting cart state with duplicate entries.
+### Rule 2: Array Immutability (Never Mutate the Source Array)
+*In our own words:*  
+JavaScript's `Array.prototype.sort()` sorts in-place. An AI will often write `products.sort(...)`, permanently corrupting the default order for the remainder of the session. When the user later selects "Default", the original catalog order cannot be restored without a hard page reload.
+- **Strict Invariant**: Always shallow-copy arrays (`[...products]`) before sorting or filtering. Selecting "default" must cleanly restore the initial product ID order.
 
-**Violations to avoid:**
-- ❌ Calling `addEventListener` inside a `.map()` during rendering.
-- ❌ Calling `initProductGridListener()` more than once during the app lifecycle.
-- ❌ Querying all buttons after render and attaching individual listeners.
+### Rule 3: Event Listener Isolation (Single Delegated Listener)
+*In our own words:*  
+When re-rendering a list of cards, AI code often attaches `.addEventListener()` to each individual button inside the render loop. As the user searches or filters, hundreds of duplicate listeners accumulate on elements. A single click then triggers multiple cart additions.
+- **Strict Invariant**: Event listeners must be attached once at initialization on a stable parent container using event delegation (`event.target.closest(...)`).
 
-**Correct pattern:**
-```js
-// ✅ Single listener on stable parent — called ONCE in main.js init()
-export function initProductGridListener(onAddToCart) {
-  productsGrid.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-add-to-cart');
-    if (!btn) return;
-    onAddToCart(Number(btn.dataset.productId));
-  });
-}
-```
+### Rule 4: Type Safety Without Shortcuts (No `any`, No `as`, No `!`)
+*In our own words:*  
+When encountering type mismatches with DOM elements or JSON data, AI code tends to silence the compiler by sprinkling `as unknown as Type`, non-null assertions (`!`), or fallback to `any`.
+- **Strict Invariant**: Zero `any`, zero `as`, zero `!`. Narrow types safely using `instanceof HTMLElement`, `typeof`, null-guards, and custom type predicates.
 
----
-
-## Module Responsibility Map
-
-| File              | Allowed To Do                                      | Forbidden From               |
-|-------------------|----------------------------------------------------|------------------------------|
-| `products.js`     | Export product data array and category helper      | DOM, events, cart, imports   |
-| `cart.js`         | Manage cart state + localStorage                   | DOM, events, imports         |
-| `filters.js`      | Pure filter/sort/search functions                  | DOM, events, state, imports  |
-| `ui.js`           | All DOM reads/writes, delegated event wiring       | cart mutations, filter logic |
-| `main.js`         | Import all, init state, wire handlers, bootstrap   | Direct DOM access            |
-| `quiz.js`         | Quiz-specific DOM + state (self-contained widget)  | Product grid / cart DOM      |
+### Rule 5: CSS Logical Properties & RTL Positioning
+*In our own words:*  
+Combining CSS logical properties like `inset-inline-start: 0` with physical transforms like `transform: translateX(-100%)` in RTL layouts causes drawers to translate into the visible viewport rather than offscreen, permanently trapping overlays on screen.
+- **Strict Invariant**: Use explicit physical coordinates (`left: 0; right: auto;`) for directional drawers, paired with `visibility: hidden; pointer-events: none;` on closed states.
 
 ---
 
-## Console Hygiene Checklist
+## 4. Console Hygiene Checklist
 
-Before every commit, verify:
-- [ ] Zero `console.error` or `console.warn` in the browser DevTools console.
-- [ ] No unhandled Promise rejections.
-- [ ] No "Cannot read properties of null" (always guard with `if (!el) return`).
-- [ ] No duplicate event listener warnings.
-- [ ] `localStorage` key is `bodren_cart_v1` — never change mid-session.
+- [ ] Zero `console.error` and zero `console.warn` in the browser console.
+- [ ] Zero TypeScript errors (`npm run typecheck` exits with 0).
+- [ ] Zero ESLint errors or warnings (`npm run lint` exits with 0).
+- [ ] Prettier formatting verified (`npm run format:check` exits with 0).

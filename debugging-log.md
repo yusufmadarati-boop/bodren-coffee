@@ -91,3 +91,14 @@
   }
   ```
 - **Did I use AI?** Yes — asked AI to review the quantity update flow. It confirmed the fix and also noted to call `_persist()` after both branches of the conditional.
+
+---
+
+## Bug 6
+
+- **What I saw:** When switching language to Arabic (`dir="rtl"`), the Cart Drawer remained stuck open on the left side of the screen and could not be closed by clicking the 'X' button or overlay.
+- **Type:** layout / state
+- **How I found it:** Switched language to Arabic in the browser and observed the drawer appearing immediately over page content. Clicking the close button did not hide it.
+- **Cause:** CSS logical property `inset-inline-start: 0` in RTL resolved to `right: 0`, and applying `transform: translateX(-100%)` moved the drawer 400px to the left inside the viewport instead of offscreen. Furthermore, when closed, the drawer lacked `visibility: hidden; pointer-events: none;`, keeping it visible and intercepting clicks.
+- **Fix:** Switched to physical positioning (`left: 0; right: auto; transform: translateX(-100%);`) in RTL and added explicit `visibility: hidden; pointer-events: none;` on the closed state, transitioning to `visibility: visible; pointer-events: all;` only when `.is-open` is present.
+- **Did I use AI?** Yes — identified the CSS logical property coordinate inversion and fixed the drawer transform rules.
