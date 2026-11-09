@@ -1,53 +1,41 @@
-/**
- * src/types.ts
- * ═══════════════════════════════════════════════════════════════
- * Core domain types for the BODREN e-commerce application.
- * Handcrafted types with zero 'any'.
- * ═══════════════════════════════════════════════════════════════
- */
+// Core domain types for BODREN Coffee & ShopBoard e-commerce
 
-export type ProductCategory = 'Espresso' | 'Latte' | 'Specialty' | 'Cold';
+/** Raw product shape returned by the API */
+export interface ApiProduct {
+  id: number;
+  title: string;
+  category_name: string;
+  price_cents: number;
+  in_stock: boolean;
+}
 
+/** Normalized product used across UI */
 export interface Product {
-  readonly id: number;
-  readonly name: string;
-  readonly category: string;
-  readonly price: number;
-  readonly emoji: string;
-  readonly desc: string;
-  readonly badge: string;
-}
-
-export interface CartItem {
-  readonly id: number;
-  readonly name: string;
-  readonly price: number;
-  readonly emoji: string;
-  qty: number;
-}
-
-export interface Cart {
-  readonly items: readonly CartItem[];
-  readonly totalItems: number;
-  readonly totalPrice: number;
-}
-
-export type SortOption = 'default' | 'price-asc' | 'price-desc';
-
-export interface FilterState {
-  query: string;
+  id: number;
+  title: string;
   category: string;
-  sortKey: SortOption;
+  priceCents: number;
+  inStock: boolean;
+  emoji: string;
 }
 
-export type LanguageCode = 'en' | 'ar' | 'tr';
-
-export interface QuizOption {
-  readonly textKey: string;
-  readonly result: string;
+/** A single item in the shopping cart */
+export interface CartItem {
+  product: Product;
+  quantity: number;
 }
 
-export interface QuizQuestion {
-  readonly questionKey: string;
-  readonly options: readonly QuizOption[];
+/** The full cart – a map of product id -> CartItem */
+export type Cart = Record<number, CartItem | undefined>;
+
+/** Pre-computed cart summary */
+export interface CartSummary {
+  itemCount: number;
+  totalCents: number;
 }
+
+/** Category filter option – "All" means show everything */
+export type Category = string;
+
+/** Sort options for the product list */
+export type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'name-asc';
