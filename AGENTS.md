@@ -1,24 +1,15 @@
-# AGENTS.md – Operational Rules for BODREN Project
+# AGENTS.md – Automated Agent Guidelines for BODREN
 
-This file guides automated AI agents modifying this repository.
+This document governs autonomous coding agents modifying this codebase.
 
-## Operational Standards
+## 🎯 Project Scope & Quality Gate
+- **Application**: BODREN Artisan Coffee & Goods — a multi-page e-commerce ShopBoard.
+- **Strict Quality Rule**: The pipeline will immediately fail if any non-typed shortcut (`any`, `as`, `!`) or dead starter boilerplate is introduced.
 
-1. **Strict TypeScript & ESLint**:
-   - Zero tolerance for `any`, `as`, and `!`.
-   - Never suppress compiler or linter errors with `// @ts-ignore` or `eslint-disable`.
-   - All code must pass `npm run typecheck` and `npm run lint` cleanly.
-
-2. **Component Conventions**:
-   - One component per file inside `src/components/`.
-   - Every component must declare an explicit `Props` interface.
-   - All React lists must use real data identifiers for `key` props (e.g. `key={item.id}`). Array index keys are strictly forbidden.
-
-3. **State Management**:
-   - Keep business logic pure inside `src/logic/`.
-   - Keep storage and network effects isolated to `src/state/` and `src/api/`.
-   - Do not duplicate derived state into `useState`.
-
-4. **Styling & Assets**:
-   - Adhere to the BODREN artisan coffee aesthetic using CSS variables defined in `src/style.css`.
-   - Keep English across code, identifiers, docs, and git commit messages.
+## 📋 Pre-Commit Verification Checklist
+Before submitting any commit or pull request, the agent must ensure:
+1. `npm run typecheck` exits with status `0` (Zero compiler errors).
+2. `npm run lint` exits with status `0` (Zero warnings, zero errors).
+3. `npm run build` generates clean production chunks under `dist/`.
+4. No `console.log` statements exist in production source code.
+5. All route pages remain lazy-loaded with explicit `<Suspense>` boundaries.

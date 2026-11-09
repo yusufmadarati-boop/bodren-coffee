@@ -1,9 +1,9 @@
 // Pure product filtering, searching, and sorting logic
 
-import type { Product, SortOption } from '../types';
+import type { Product, RoastFilter, SortOption } from '../types';
 
-/** Return unique categories present in product list */
-export function getCategories(products: Product[]): string[] {
+/** Get unique categories from list */
+export function getCategories(products: readonly Product[]): string[] {
   const seen = new Set<string>();
   for (const p of products) {
     seen.add(p.category);
@@ -12,22 +12,37 @@ export function getCategories(products: Product[]): string[] {
 }
 
 /** Filter products by category */
-export function filterByCategory(products: Product[], category: string): Product[] {
-  if (category === 'All') return products;
+export function filterByCategory(products: readonly Product[], category: string): Product[] {
+  if (category === 'All' || category.trim().length === 0) {
+    return [...products];
+  }
   return products.filter((p) => p.category === category);
 }
 
-/** Filter products by search query */
-export function filterBySearch(products: Product[], query: string): Product[] {
+/** Filter products by roast level */
+export function filterByRoast(products: readonly Product[], roast: RoastFilter): Product[] {
+  if (roast === 'All') {
+    return [...products];
+  }
+  return products.filter((p) => p.roastLevel === roast);
+}
+
+/** Filter products by search query across title, origin, and tasting notes */
+export function filterBySearch(products: readonly Product[], query: string): Product[] {
   const q = query.trim().toLowerCase();
-  if (!q) return products;
-  return products.filter((p) => p.title.toLowerCase().includes(q));
+  if (q.length === 0) {
+    return [...products];
+  }
+  return products.filter((p) => {
+    if (p.title.toLowerCase().includes(q)) return true;
+    if (p.origin.toLowerCase().includes(q)) return true;
+    return p.tastingNotes.some((note) => note.toLowerCase().includes(q));
+  });
 }
 
 /** Sort products without mutating source */
-export function sortProducts(products: Product[], sort: SortOption): Product[] {
+export function sortProducts(products: readonly Product[], sort: SortOption): Product[] {
   const copy = [...products];
-
   switch (sort) {
     case 'price-asc':
       return copy.sort((a, b) => a.priceCents - b.priceCents);
@@ -40,12 +55,20 @@ export function sortProducts(products: Product[], sort: SortOption): Product[] {
   }
 }
 
-/** Apply filter and sort in single pass */
-export function applyFilters(
-  products: Product[],
-  category: string,
-  query: string,
-  sort: SortOption
+export interface FilterOptions {
+  category: string;
+  roast: RoastFilter;
+  query: string;
+  sort: SortOption;
+}
+
+/** Single-pass pure filtering pipeline */
+export function applyProductFilters(
+  products: readonly Product[],
+  options: FilterOptions
 ): Product[] {
-  return sortProducts(filterBySearch(filterByCategory(products, category), query), sort);
+  const byCategory = filterByCategory(products, options.category);
+  const byRoast = filterByRoast(byCategory, options.roast);
+  const bySearch = filterBySearch(byRoast, options.query);
+  return sortProducts(bySearch, options.sort);
 }

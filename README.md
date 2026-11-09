@@ -1,84 +1,95 @@
-# BODREN — Artisan Coffee & Goods
+# BODREN Artisan Coffee & Goods
 
-A React + TypeScript e-commerce application that connects to the ShopBoard API. Browse specialty coffee, filter by category, sort by price or name, search by keyword, and manage an order with persistent cart storage across page refreshes.
+A production-grade, multi-page ShopBoard web application built with **React 19**, **TypeScript (Strict Mode)**, **Vite**, **Tailwind CSS**, and **Zustand**. Designed for artisanal micro-lot single-origin beans, handcrafted espresso blends, and curated coffee goods.
 
-## Features
+---
 
-- ☕ **Artisan Coffee & Goods Catalog**: Fetched dynamically from live API (`https://shopboard-api.vercel.app/api/products`).
-- 🔍 **Live Search & Category Filtering**: Instant filtering across titles and categories.
-- 🔀 **Sort Options**: Featured, price low-to-high, price high-to-low, and alphabetical name sort.
-- 🛍️ **Persistent Cart Drawer**: Seamless slide-in drawer with stepper controls and full `localStorage` persistence under `shopboard_cart_v1` and `bodren_cart_v1`.
-- ⚡ **Robust UI States**: Complete handling for loading spinner, error state with interactive "Try again" retry, empty state, and no-match search feedback.
-- 💎 **Strict Quality**: 100% strict TypeScript, zero `any`, zero `as`, zero `!` non-null assertions, zero ESLint warnings.
+## ☕ Key Architectural Highlights
 
-## Tech Stack
+1. **Lazy-Loaded Multi-Page Routing**: Powered by `react-router-dom` with `React.lazy()` and `<Suspense>` route splitting to ensure minimal initial bundle size.
+2. **Global State Store (Zustand)**: Single source of truth in `src/store/useCartStore.ts` with `localStorage` persistence under `bodren_cart_store_v2`.
+3. **Pure Derived Values**: Subtotal, estimated tax (8%), shipping thresholds, and grand totals are calculated dynamically via pure functions in `src/logic/cart.logic.ts`. No computed duplicates stored in global state.
+4. **Validated Checkout Flow**: Built using `react-hook-form` and a centralized `zod` schema (`src/lib/checkoutSchema.ts`), providing instant feedback, address parsing, and card authorization simulation.
+5. **Resilient Error Boundaries**: Route-level class `ErrorBoundary` that catches runtime render errors and provides interactive "Try Again" recovery.
+6. **Strict Engineering Standards**:
+   - Zero `any`, zero `as` typecasting, and zero `!` non-null assertions.
+   - Lists keyed with real domain identifiers (`item.id`), never array indices.
+   - 100% English code, docs, and git commit history.
 
-- **React 19**
-- **TypeScript 5.7** (strict mode enabled)
-- **Vite 6**
-- **ESLint 9** + **typescript-eslint** (strict type-checked)
-- **Prettier 3**
-- **Husky** + **lint-staged**
+---
 
-## Scripts
+## 🛠️ Tech Stack & Dependencies
 
-| Command | Description |
+- **Framework**: React 19 + Vite 6
+- **Language**: TypeScript 5.7 (`"strict": true`, zero exceptions)
+- **Styling**: Tailwind CSS + `@tailwindcss/vite`
+- **Icons**: Lucide React
+- **State**: Zustand with `persist` middleware
+- **Forms & Validation**: React Hook Form + `@hookform/resolvers` + Zod
+- **Routing**: React Router DOM
+- **Code Quality**: ESLint 9 (Flat config with `typescript-eslint` strict type-checked), Prettier 3, Husky 9 + lint-staged
+
+---
+
+## 📜 Development Scripts
+
+| Command | Purpose |
 |---|---|
-| `npm run dev` | Start development server |
-| `npm run build` | Type-check and production build |
-| `npm run typecheck` | Run `tsc --noEmit` |
-| `npm run lint` | Run ESLint across `src/` |
-| `npm run format` | Format codebase with Prettier |
+| `npm run dev` | Launch local development server with HMR |
+| `npm run build` | Perform TypeScript typecheck and compile Vite production bundle |
+| `npm run typecheck` | Run `tsc --noEmit` across all project files |
+| `npm run lint` | Run ESLint with zero allowed warnings or errors |
+| `npm run format` | Enforce Prettier formatting |
 
-## Component Tree
+---
 
-```
-App                         (owns: productsState, searchQuery, selectedCategory, sortBy, cart, isCartOpen)
-├── Header                  (props: cartSummary, searchQuery, onSearchChange, onCartOpen)
-├── main
-│   ├── hero-banner
-│   ├── toolbar
-│   │   ├── CategoryFilter  (props: categories, selected, onSelect)
-│   │   └── SortSelect      (props: value, onChange)
-│   └── ProductList         (props: state, searchQuery, onAddToCart, onRetry)
-│       └── ProductCard[]   (props: product, onAddToCart)
-└── CartDrawer              (props: isOpen, cart, summary, onClose, onIncrease, onDecrease, onRemove, onClear)
-    └── CartItemRow[]       (props: item, onIncrease, onDecrease, onRemove)
-```
+## 🗺️ Route Architecture
 
-### State Ownership
+| Path | Component | Access Mode | Description |
+|---|---|---|---|
+| `/` | `HomePage` | Lazy / Suspense | Hero showcase, artisan philosophy, quick catalog links |
+| `/products` | `ProductsPage` | Lazy / Suspense | Full catalog, live multi-attribute search, roast/category filter, sort selector |
+| `/products/:id` | `ProductDetailPage` | Lazy / Suspense | Single origin specs, altitude, tasting notes, grind selector, add-to-cart |
+| `/cart` | `CartPage` | Lazy / Suspense | Order review, line-item adjustments, shipping threshold indicator |
+| `/checkout` | `CheckoutPage` | Lazy / Suspense | Validated shipping & simulated payment form |
+| `*` (`/404`) | `NotFoundPage` | Lazy / Suspense | Custom 404 fallback with return navigation |
 
-| State | Owner | Description |
-|---|---|---|
-| `productsState` | `App` | Async state: loading, error with message, or success with Product array |
-| `searchQuery` | `App` | Active user search query string |
-| `selectedCategory` | `App` | Active category filter string ('All' or specific category) |
-| `sortBy` | `App` | Current sort order selection ('featured', 'price-asc', 'price-desc', 'name-asc') |
-| `cart` | `App` | Shopping cart map indexed by productId, synchronized to localStorage |
-| `isCartOpen` | `App` | Boolean toggle for slide-out cart drawer overlay |
+---
 
-## Folder Structure
+## 🌳 Component Hierarchy & State Ownership
 
 ```
-src/
-├── api/
-│   ├── client.ts           # Fetch client with ApiError handling
-│   └── products.api.ts     # getProducts() with normalization
-├── components/
-│   ├── CartDrawer.tsx      # Slide-out cart drawer with total and checkout
-│   ├── CartItemRow.tsx     # Cart row with stepper and remove actions
-│   ├── CategoryFilter.tsx  # Pill filters for categories
-│   ├── Header.tsx          # Brand header with search and cart indicator
-│   ├── ProductCard.tsx     # Reusable product card with stock status
-│   ├── ProductList.tsx     # Grid container handling all async states
-│   └── SortSelect.tsx      # Accessible sort dropdown
-├── logic/
-│   ├── cart.logic.ts       # Pure immutable cart operations and totals
-│   └── products.logic.ts   # Pure filtering, searching, and sorting functions
-├── state/
-│   └── cart.state.ts       # LocalStorage persistence layer
-├── App.tsx                 # Root React component and state owner
-├── main.tsx                # StrictMode root mounting
-├── style.css               # Luxury warm artisan coffee styling & design tokens
-└── types.ts                # Strict domain interfaces and types
+<App />
+└── <RouterProvider router={router} />
+    └── <RootLayout />                                [Global Layout Container]
+        ├── <Navbar />                                [Consumes: Cart items from useCartStore; computes totals]
+        ├── <ErrorBoundary />                         [Catches runtime exceptions in child routes]
+        │   └── <Suspense fallback={<Fallback />} />
+        │       ├── <HomePage />                      [Owns: Presentational state]
+        │       │
+        │       ├── <ProductsPage />                  [Owns: asyncState, searchQuery, selectedCategory, selectedRoast, sortOption]
+        │       │   ├── <ProductFilters />            [Props: filter selections, callback handlers]
+        │       │   ├── <SkeletonGrid />              [Props: count]
+        │       │   └── <ProductCard /> (repeated)    [Props: product; dispatches: addItem to useCartStore]
+        │       │
+        │       ├── <ProductDetailPage />             [Owns: product, quantity, selectedGrind, addedNotice]
+        │       │
+        │       ├── <CartPage />                      [Consumes: items from useCartStore; computes totals]
+        │       │   └── <CartItemDetailRow />         [Props: item; dispatches: updateQuantity, removeItem]
+        │       │
+        │       ├── <CheckoutPage />                  [Owns: useForm(checkoutSchema), isSubmitting, orderComplete, confirmedOrderId]
+        │       │
+        │       └── <NotFoundPage />                  [Owns: Presentational state]
+        │
+        └── <Footer />                                [Props: tagline]
 ```
+
+### State Ownership Matrix
+
+| State Identifier | Owner Location | Type | Lifecycle & Persistence |
+|---|---|---|---|
+| `items` | `src/store/useCartStore.ts` | `CartItem[]` | Global; persisted to `localStorage` (`bodren_cart_store_v2`) |
+| `totals` | `src/logic/cart.logic.ts` | `CartTotals` | Dynamic derived calculation during component render |
+| `asyncState` | `src/pages/ProductsPage.tsx` | `AsyncState` | Local component state for API fetch |
+| `filterState` | `src/pages/ProductsPage.tsx` | Strings / Enums | Local component state for interactive toolbar |
+| `checkoutForm` | `src/pages/CheckoutPage.tsx` | `CheckoutFormData` | Managed by `react-hook-form` via Zod resolver |

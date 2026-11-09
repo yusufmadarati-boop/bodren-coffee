@@ -1,40 +1,45 @@
-# CLAUDE.md – Guidelines for BODREN React + TypeScript
+# CLAUDE.md – Operational Engineering Standards for BODREN
 
-## Stack & Architecture
+This file defines the strict architectural and coding rules governing development on the **BODREN Artisan Coffee & Goods** repository.
 
-- **Framework**: React 19 with Function Components and Hooks
-- **Language**: TypeScript 5.7+ with strict type checking enabled
-- **Build System**: Vite 6
-- **Linters & Formatters**: ESLint 9 (flat config with typescript-eslint strict), Prettier 3
-- **Git Hooks**: Husky 9 + lint-staged (runs `eslint --fix`, `prettier --write`, and `tsc --noEmit`)
+---
 
-## Project Structure
+## 🏛️ Architecture & Folder Conventions
 
 ```
 src/
-├── api/          # API communication only (HTTP client and endpoints)
-├── components/   # Reusable UI components (strictly one component per file with typed Props)
-├── logic/        # Pure business logic (filtering, sorting, immutable calculations)
-├── state/        # Side effects and storage persistence (localStorage)
-├── types.ts      # Shared TypeScript contracts and interfaces
-├── style.css     # Artisan coffee design system tokens and styling
-├── App.tsx       # Root coordinator and state owner
-└── main.tsx      # Application entry point
+├── api/          # HTTP requests and API adapters only (no React hooks)
+├── components/   # Reusable presentational components (one component per file, explicit Props)
+├── lib/          # Utilities, schemas, and helper functions (e.g. checkoutSchema, utils)
+├── logic/        # Pure business calculations (filters, sorting, cart math)
+├── pages/        # Lazy-loaded route page containers
+├── routes/       # Router configuration
+├── store/        # Zustand global store definitions
+├── types.ts      # Shared domain contracts and TypeScript types
+└── style.css     # Global CSS and Tailwind root directives
 ```
 
-## Strict Engineering Rules
+---
 
-### Rule 1: Never use array index as React key
-Using array indices (`key={index}`) causes rendering bugs, corrupted DOM state, and broken animations when lists are filtered or sorted. Always use unique identifiers from domain data (`key={product.id}`).
+## 🚫 Critical Anti-Patterns & Mandates
 
-### Rule 2: Zero `any`, zero `as`, zero non-null assertions `!`
-Do not use `as` type assertions or `!` non-null assertions to bypass TypeScript checks. If a value can be undefined, narrow it using explicit type guards (`if (item !== undefined)`) or fallback default logic.
+### 1. Never Store Derived Values in Global Stores
+Storing computed totals (e.g., `totalPrice`, `taxAmount`, `itemCount`) in state causes out-of-sync bugs, redundant renders, and stale data.
+- **Rule**: Zustand stores must only hold primitive array items (`items: CartItem[]`).
+- **Implementation**: Derived values MUST be computed on the fly using pure functions (e.g., `calculateCartTotals(items)`).
 
-### Rule 3: Compute derived state directly during render
-Never store values that can be derived (such as filtered product lists or cart totals) in `useState` accompanied by `useEffect` synchronizers. Compute derived values directly in the component render phase to eliminate out-of-sync states and double renders.
+### 2. Always Wrap Lazy Routes in `<Suspense>` and `<ErrorBoundary>`
+Lazy imports can fail due to network drops or chunk load timeouts.
+- **Rule**: Every lazy route must be enclosed within a responsive `<Suspense>` fallback and caught by an `<ErrorBoundary>` providing an actionable recovery button.
 
-### Rule 4: Explicit Accessible Labels on all form controls
-Every `<input>` and `<select>` element must be accessible with either a paired `<label htmlFor="...">` or an explicit `aria-label`.
+### 3. Never Use Array Indices as React List Keys
+Using `key={index}` breaks React's reconciliation engine when sorting, filtering, or removing items from arrays.
+- **Rule**: Always use unique, stable identifiers from data (e.g., `key={product.id}` or `key={item.product.id + item.grindOption}`).
 
-### Rule 5: Event handlers returning void must use block statements
-In TypeScript with strict linting rules, shorthand arrow functions returning void expressions trigger `@typescript-eslint/no-confusing-void-expression`. Always wrap calls in block braces: `onClick={() => { handleClick(); }}`.
+### 4. Zero Tolerance for `any`, `as`, and `!`
+Type-casting with `as` or forcing non-nullity with `!` defeats TypeScript's safety guarantees and conceals runtime errors.
+- **Rule**: Model optionality with unions (`CartItem | undefined`) and narrow with explicit type guards (`if (item !== undefined)`).
+
+### 5. Event Handlers Returning Void Must Use Block Syntax
+In strict ESLint configs with `@typescript-eslint/no-confusing-void-expression`, shorthand arrow returns like `onClick={() => handleClick()}` trigger lint errors.
+- **Rule**: Wrap void calls in curly braces: `onClick={() => { handleClick(); }}`.

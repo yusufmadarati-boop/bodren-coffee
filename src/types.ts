@@ -1,6 +1,6 @@
-// Core domain types for BODREN Coffee & ShopBoard e-commerce
+// Core domain types for BODREN Artisan Coffee & Goods
 
-/** Raw product shape returned by the API */
+/** Raw product shape returned by API */
 export interface ApiProduct {
   id: number;
   title: string;
@@ -9,7 +9,7 @@ export interface ApiProduct {
   in_stock: boolean;
 }
 
-/** Normalized product used across UI */
+/** Product domain entity with artisanal attributes */
 export interface Product {
   id: number;
   title: string;
@@ -17,25 +17,37 @@ export interface Product {
   priceCents: number;
   inStock: boolean;
   emoji: string;
+  roastLevel: 'Light' | 'Medium' | 'Dark' | 'Omni';
+  origin: string;
+  tastingNotes: readonly string[];
+  description: string;
 }
 
-/** A single item in the shopping cart */
+/** Cart item stored in state */
 export interface CartItem {
   product: Product;
   quantity: number;
+  grindOption?: 'Whole Bean' | 'Coarse (French Press)' | 'Medium (Drip / V60)' | 'Fine (Espresso)';
 }
 
-/** The full cart – a map of product id -> CartItem */
-export type Cart = Record<number, CartItem | undefined>;
-
-/** Pre-computed cart summary */
-export interface CartSummary {
-  itemCount: number;
-  totalCents: number;
+/** Pre-calculated totals derived dynamically */
+export interface CartTotals {
+  totalQuantity: number;
+  subtotalCents: number;
+  estimatedTaxCents: number;
+  shippingCents: number;
+  grandTotalCents: number;
 }
 
-/** Category filter option – "All" means show everything */
+/** Category filter option */
 export type Category = string;
 
-/** Sort options for the product list */
+/** Roast filter option */
+export type RoastFilter = 'All' | 'Light' | 'Medium' | 'Dark' | 'Omni';
+
+/** Sort options for the product catalog */
 export type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'name-asc';
+
+/** Grinding choice for coffee products */
+export type GrindOption =
+  'Whole Bean' | 'Coarse (French Press)' | 'Medium (Drip / V60)' | 'Fine (Espresso)';
